@@ -1,0 +1,97 @@
+{
+  "name": "@driftime/sanity-plugin-icon",
+  "version": "0.1.0",
+  "description": "Every Lucide icon, searchable inside Sanity Studio and stored ready to render.",
+  "keywords": [
+    "sanity",
+    "sanity-plugin"
+  ],
+  "homepage": "https://github.com/driftime/sanity-plugin-icon",
+  "bugs": {
+    "url": "https://github.com/driftime/sanity-plugin-icon/issues",
+    "email": "kenny@driftime.com"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Kenny Heard",
+    "email": "kenny@driftime.com",
+    "url": "https://driftime.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/driftime/sanity-plugin-icon.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./render": {
+      "source": "./src/render.ts",
+      "default": "./dist/render.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": "./dist/index.js",
+      "./render": "./dist/render.js",
+      "./package.json": "./package.json"
+    },
+    "access": "public"
+  },
+  "scripts": {
+    "typecheck": "tsc",
+    "check": "oxfmt --check && oxlint",
+    "fix": "oxfmt && oxlint --fix",
+    "dev": "plugin-kit link-watch",
+    "watch": "pkg-utils watch --strict",
+    "build": "bun run check && bun run typecheck && plugin-kit verify-package --silent && pkg-utils build --strict --check --clean && node --check dist/index.js",
+    "prepublishOnly": "bun run build"
+  },
+  "dependencies": {
+    "@sanity/client": "^7.26.2",
+    "@sanity/icons": "^5.2.1",
+    "@sanity/ui": "^4.0.3",
+    "lucide-static": "^1.43.0"
+  },
+  "devDependencies": {
+    "@sanity/browserslist-config": "1.0.5",
+    "@sanity/pkg-utils": "12.1.2",
+    "@sanity/plugin-kit": "10.0.5",
+    "@sanity/tsconfig": "2.2.1",
+    "@types/node": "26.2.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "babel-plugin-react-compiler": "1.0.0",
+    "oxfmt": "0.63.0",
+    "oxlint": "1.78.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "sanity": "6.9.2",
+    "typescript": "7.0.2"
+  },
+  "peerDependencies": {
+    "react": "19",
+    "sanity": "6"
+  },
+  "browserslist": "extends @sanity/browserslist-config",
+  "engines": {
+    "node": ">=20.19 <22 || >=22.12"
+  },
+  "sanityPlugin": {
+    "verifyPackage": {
+      "tsconfig": false,
+      "scripts": false,
+      "oxlint": false,
+      "oxfmt": false
+    }
+  }
+}
