@@ -31,6 +31,26 @@ export function normaliseTerms(value: string) {
 }
 
 /**
+ * Narrows the library to a chosen set of icons, in the order they were named. A name the library does
+ * not recognise is skipped, so a set outlives the release it was written against.
+ *
+ * @param library - Every icon the library offers.
+ * @param names - Names of the icons to offer, or nothing to offer them all.
+ * @returns The icons on offer.
+ */
+export function selectIcons(library: LibraryIcon[], names: string[] | undefined) {
+  if (!isDefined(names)) return library;
+
+  const byName = new Map(library.map((icon) => [icon.name, icon]));
+
+  return [...new Set(names)].flatMap((name) => {
+    const icon = byName.get(name);
+
+    return isDefined(icon) ? [icon] : [];
+  });
+}
+
+/**
  * Reads the icon library, pairing each drawing with the terms it can be found by. Both files come
  * from the same release as the icons themselves, so the drawings and their terms never disagree.
  *

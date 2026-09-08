@@ -13,19 +13,22 @@ import { useIconTooltip } from "@/hooks/use-icon-tooltip";
 import { useRecentIcons } from "@/hooks/use-recent-icons";
 import { getCentredScrollTop, getNextIndex, getRevealedScrollTop, getVisibleRows } from "@/lib/grid";
 import type { LibraryIcon } from "@/lib/library";
-import { normaliseTerms } from "@/lib/library";
+import { normaliseTerms, selectIcons } from "@/lib/library";
 import { isDefined } from "@/lib/utils";
+import type { SanityIconName } from "@/plugin";
 
 export type PickerProps = Omit<
   ComponentProps<typeof Dialog>,
   "children" | "header" | "width" | "selected" | "onSelect"
 > & {
+  allowed: SanityIconName[] | undefined;
   selected: string | undefined;
   onSelect: (icon: LibraryIcon) => void;
 };
 
-export function Picker({ selected, onSelect, ...props }: PickerProps) {
+export function Picker({ allowed, selected, onSelect, ...props }: PickerProps) {
   const library = useIconLibrary();
+  const icons = selectIcons(library ?? [], allowed);
   const { recent, remember, forget } = useRecentIcons();
 
   const [search, setSearch] = useState("");
@@ -41,9 +44,9 @@ export function Picker({ selected, onSelect, ...props }: PickerProps) {
 
   const query = normaliseTerms(search);
   const searching = isDefined(query);
-  const results = (library ?? []).filter((icon) => !searching || icon.terms.includes(query));
+  const results = icons.filter((icon) => !searching || icon.terms.includes(query));
 
-  const byName = new Map((library ?? []).map((icon) => [icon.name, icon]));
+  const byName = new Map(icons.map((icon) => [icon.name, icon]));
   const recentIcons = searching
     ? []
     : recent.flatMap((entry) => {
@@ -56,8 +59,7 @@ export function Picker({ selected, onSelect, ...props }: PickerProps) {
 
   const rows = getVisibleRows(scrollRow, results.length);
 
-  const selectedIndex =
-    searching || !isDefined(library) || !isDefined(selected) ? -1 : library.findIndex((icon) => icon.name === selected);
+  const selectedIndex = searching || !isDefined(selected) ? -1 : icons.findIndex((icon) => icon.name === selected);
   const activeIndex = movedIndex ?? Math.max(0, selectedIndex);
 
   useEffect(() => {
@@ -174,7 +176,7 @@ export function Picker({ selected, onSelect, ...props }: PickerProps) {
           value={search}
           onChange={handleSearch}
           onKeyDown={handleSearchKeyDown}
-          disabled={!isDefined(library)}
+          disabled={!isDefined(library) || icons.length === 0}
           aria-label="Search the icon library"
         />
         {!isDefined(library) && (
@@ -199,21 +201,30 @@ export function Picker({ selected, onSelect, ...props }: PickerProps) {
                 All icons ({results.length.toLocaleString("en-GB")})
               </Text>
             </Box>
-            <Library
-              ref={scroller}
-              icons={results}
-              rows={rows}
-              selected={selected}
-              activeIndex={activeIndex}
-              activeCell={activeCell}
-              search={search}
-              onSelect={handleSelect}
-              onClearSearch={clearSearch}
-              onScroll={handleScroll}
-              onMouseOver={handleHover}
-              onMouseLeave={clearHover}
-              onKeyDown={handleGridKeyDown}
-            />
+            {icons.length === 0 && (
+              <Flex align="center" justify="center" style={{ height: gridHeight }}>
+                <Text size={1} muted>
+                  No icons are available to choose from.
+                </Text>
+              </Flex>
+            )}
+            {icons.length > 0 && (
+              <Library
+                ref={scroller}
+                icons={results}
+                rows={rows}
+                selected={selected}
+                activeIndex={activeIndex}
+                activeCell={activeCell}
+                search={search}
+                onSelect={handleSelect}
+                onClearSearch={clearSearch}
+                onScroll={handleScroll}
+                onMouseOver={handleHover}
+                onMouseLeave={clearHover}
+                onKeyDown={handleGridKeyDown}
+              />
+            )}
           </Stack>
         )}
         <Tooltip key={hovered?.icon.name} hovered={hovered} />
