@@ -1,7 +1,7 @@
 {
   "name": "@driftime/sanity-plugin-icon",
   "version": "0.1.0",
-  "description": "Every Lucide icon, searchable inside Sanity Studio and stored ready to render.",
+  "description": "Lucide icons for Sanity Studio, stored as drawings and rendered without the library.",
   "keywords": [
     "sanity",
     "sanity-plugin"
