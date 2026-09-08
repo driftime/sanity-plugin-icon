@@ -1,17 +1,17 @@
 import { SearchIcon } from "@sanity/icons/Search";
-import { Box, Button, Dialog, Flex, Grid, Spinner, Stack, Text, TextInput } from "@sanity/ui";
-import type { ChangeEvent, ComponentProps, KeyboardEvent, MouseEvent } from "react";
+import { Box, Dialog, Flex, Spinner, Stack, Text, TextInput } from "@sanity/ui";
+import type { ChangeEvent, ComponentProps, KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
-import { Cell } from "@/components/picker/cell";
+import { Library } from "@/components/picker/library";
 import { Recent } from "@/components/picker/recent";
-import type { HoveredIcon } from "@/components/picker/tooltip";
 import { Tooltip } from "@/components/picker/tooltip";
 import { defaultIconProps } from "@/config/defaults";
-import { gridColumns, gridHeight, gridLayoutStyle, gridRowHeight } from "@/config/grid";
+import { gridHeight, gridRowHeight } from "@/config/grid";
 import { useIconLibrary } from "@/hooks/use-icon-library";
+import { useIconTooltip } from "@/hooks/use-icon-tooltip";
 import { useRecentIcons } from "@/hooks/use-recent-icons";
-import { getNextIndex, getVisibleRows } from "@/lib/grid";
+import { getCentredScrollTop, getNextIndex, getRevealedScrollTop, getVisibleRows } from "@/lib/grid";
 import type { LibraryIcon } from "@/lib/library";
 import { normaliseTerms } from "@/lib/library";
 import { isDefined } from "@/lib/utils";
@@ -31,7 +31,6 @@ export function Picker({ selected, onSelect, ...props }: PickerProps) {
   const [search, setSearch] = useState("");
   const [scrollRow, setScrollRow] = useState(0);
   const [movedIndex, setMovedIndex] = useState<number>();
-  const [hovered, setHovered] = useState<HoveredIcon>();
   const [scrolling, setScrolling] = useState(false);
 
   const scroller = useRef<HTMLDivElement>(null);
@@ -39,7 +38,6 @@ export function Picker({ selected, onSelect, ...props }: PickerProps) {
   const focusActiveCell = useRef(false);
   const scrollFrame = useRef<number>(undefined);
   const scrollStop = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const hoverStart = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const query = normaliseTerms(search);
   const searching = isDefined(query);
@@ -54,10 +52,10 @@ export function Picker({ selected, onSelect, ...props }: PickerProps) {
         return isDefined(icon) ? [icon] : [];
       });
 
-  const { totalRows, firstRow, lastRow } = getVisibleRows(scrollRow, results.length);
-  const visible = results.slice(firstRow * gridColumns, lastRow * gridColumns);
+  const { hovered, handleHover, clearHover } = useIconTooltip(byName, scrolling);
 
-  // Derived rather than stored, so the grid cannot disagree with what is selected.
+  const rows = getVisibleRows(scrollRow, results.length);
+
   const selectedIndex =
     searching || !isDefined(library) || !isDefined(selected) ? -1 : library.findIndex((icon) => icon.name === selected);
   const activeIndex = movedIndex ?? Math.max(0, selectedIndex);
@@ -66,14 +64,13 @@ export function Picker({ selected, onSelect, ...props }: PickerProps) {
     const element = scroller.current;
     if (!isDefined(element) || selectedIndex === -1) return;
 
-    element.scrollTop = Math.max(0, Math.floor(selectedIndex / gridColumns) * gridRowHeight - gridHeight / 2);
+    element.scrollTop = getCentredScrollTop(selectedIndex);
   }, [selectedIndex]);
 
   useEffect(
     () => () => {
       if (isDefined(scrollFrame.current)) cancelAnimationFrame(scrollFrame.current);
       if (isDefined(scrollStop.current)) clearTimeout(scrollStop.current);
-      if (isDefined(hoverStart.current)) clearTimeout(hoverStart.current);
     },
     [],
   );
@@ -88,6 +85,11 @@ export function Picker({ selected, onSelect, ...props }: PickerProps) {
   function handleSelect(icon: LibraryIcon) {
     remember(icon.name);
     onSelect(icon);
+  }
+
+  function clearSearch() {
+    setSearch("");
+    setMovedIndex(undefined);
   }
 
   function handleSearch(event: ChangeEvent<HTMLInputElement>) {
@@ -118,10 +120,8 @@ export function Picker({ selected, onSelect, ...props }: PickerProps) {
     if (isDefined(activeCell.current)) activeCell.current.focus();
   }
 
-  // Coalesced to a frame, so a scroll gesture moves the window a row at a time rather than per event.
   function handleScroll() {
-    if (isDefined(hoverStart.current)) clearTimeout(hoverStart.current);
-    setHovered(undefined);
+    clearHover();
     if (!scrolling) setScrolling(true);
 
     if (isDefined(scrollStop.current)) clearTimeout(scrollStop.current);
@@ -137,44 +137,6 @@ export function Picker({ selected, onSelect, ...props }: PickerProps) {
       const element = scroller.current;
       if (isDefined(element)) setScrollRow(Math.floor(element.scrollTop / gridRowHeight));
     });
-  }
-
-  // Rows passing under a still cursor fire hover events of their own, hence the scroll guard.
-  function handleHover(event: MouseEvent<HTMLElement>) {
-    if (scrolling) return;
-
-    // Element rather than HTMLElement, since the glyph under the cursor is an SVG and inherits neither.
-    const target = event.target instanceof Element ? event.target.closest("[data-icon]") : undefined;
-    const cell = target instanceof HTMLElement ? target : undefined;
-
-    if (cell === hovered?.element) return;
-
-    const name = cell?.dataset["icon"];
-    const icon = isDefined(name) ? byName.get(name) : undefined;
-
-    if (isDefined(hoverStart.current)) clearTimeout(hoverStart.current);
-
-    if (!isDefined(icon) || !isDefined(cell)) {
-      setHovered(undefined);
-
-      return;
-    }
-
-    // Once one tooltip is up, the next follows the cursor rather than waiting again.
-    if (isDefined(hovered)) {
-      setHovered({ icon, element: cell });
-
-      return;
-    }
-
-    hoverStart.current = setTimeout(() => {
-      setHovered({ icon, element: cell });
-    }, 200);
-  }
-
-  function clearHover() {
-    if (isDefined(hoverStart.current)) clearTimeout(hoverStart.current);
-    if (isDefined(hovered)) setHovered(undefined);
   }
 
   function handleGridKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -197,17 +159,10 @@ export function Picker({ selected, onSelect, ...props }: PickerProps) {
     focusActiveCell.current = true;
     setMovedIndex(index);
 
-    // Worked out from the index rather than the cell, since Home and End can land outside the window.
     const element = scroller.current;
     if (!isDefined(element)) return;
 
-    const top = Math.floor(index / gridColumns) * gridRowHeight;
-
-    if (top < element.scrollTop) {
-      element.scrollTop = top;
-    } else if (top + gridRowHeight > element.scrollTop + gridHeight) {
-      element.scrollTop = top + gridRowHeight - gridHeight;
-    }
+    element.scrollTop = getRevealedScrollTop(index, element.scrollTop);
   }
 
   return (
@@ -244,60 +199,21 @@ export function Picker({ selected, onSelect, ...props }: PickerProps) {
                 All icons ({results.length.toLocaleString("en-GB")})
               </Text>
             </Box>
-            <Box
+            <Library
               ref={scroller}
-              role="listbox"
-              aria-label="Icon library"
+              icons={results}
+              rows={rows}
+              selected={selected}
+              activeIndex={activeIndex}
+              activeCell={activeCell}
+              search={search}
+              onSelect={handleSelect}
+              onClearSearch={clearSearch}
               onScroll={handleScroll}
               onMouseOver={handleHover}
               onMouseLeave={clearHover}
               onKeyDown={handleGridKeyDown}
-              style={{ height: gridHeight, overflowY: "auto" }}
-            >
-              {results.length === 0 && (
-                <Flex align="center" justify="center" direction="column" gap={3} style={{ height: gridHeight }}>
-                  <Text size={1} muted>
-                    Nothing matches “{search}”.
-                  </Text>
-                  <Button
-                    type="button"
-                    mode="ghost"
-                    text="Clear search"
-                    onClick={() => {
-                      setSearch("");
-                      setMovedIndex(undefined);
-                    }}
-                  />
-                </Flex>
-              )}
-              {results.length > 0 && (
-                <Grid
-                  gridTemplateColumns={gridColumns}
-                  style={{
-                    ...gridLayoutStyle,
-                    paddingTop: firstRow * gridRowHeight,
-                    paddingBottom: (totalRows - lastRow) * gridRowHeight,
-                  }}
-                >
-                  {visible.map((icon, offset) => {
-                    const index = firstRow * gridColumns + offset;
-
-                    return (
-                      <Cell
-                        key={icon.name}
-                        ref={index === activeIndex ? activeCell : undefined}
-                        icon={icon}
-                        selected={icon.name === selected}
-                        focusable={index === activeIndex}
-                        position={index + 1}
-                        total={results.length}
-                        onSelect={handleSelect}
-                      />
-                    );
-                  })}
-                </Grid>
-              )}
-            </Box>
+            />
           </Stack>
         )}
         <Tooltip key={hovered?.icon.name} hovered={hovered} />

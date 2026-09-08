@@ -1,3 +1,5 @@
+import { createElement } from "react";
+
 import { Drawing } from "@/components/drawing";
 import { defaultIconProps } from "@/config/defaults";
 import { resolveIconNode } from "@/lib/nodes";
@@ -17,6 +19,6 @@ export function createIconPreview(value: SanityIcon | undefined) {
   if (!isDefined(node)) return undefined;
 
   return function IconPreview() {
-    return <Drawing node={node} {...defaultIconProps} />;
+    return createElement(Drawing, { node, ...defaultIconProps });
   };
 }

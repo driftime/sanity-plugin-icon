@@ -2,9 +2,9 @@ import { defineField, defineType } from "sanity";
 
 import { Field } from "@/components/field";
 import { Input } from "@/components/input";
-import { createIconPreview } from "@/components/preview";
 import { SquareDashedIcon } from "@/icons/square-dashed";
 import { createSanityIcon } from "@/lib/icons";
+import { createIconPreview } from "@/lib/preview";
 import { convertCase, isDefined } from "@/lib/utils";
 import type { SanityIcon } from "@/types";
 import { iconTypeName } from "@/types";

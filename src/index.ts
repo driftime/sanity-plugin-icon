@@ -1,4 +1,4 @@
 export { iconPlugin } from "@/plugin";
-export { createIconPreview } from "@/components/preview";
+export { createIconPreview } from "@/lib/preview";
 
 export type { SanityIcon } from "@/types";

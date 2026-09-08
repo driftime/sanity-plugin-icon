@@ -1,4 +1,4 @@
-import { gridColumns, gridOverscan, gridVisibleRows } from "@/config/grid";
+import { gridColumns, gridHeight, gridOverscan, gridRowHeight, gridVisibleRows } from "@/config/grid";
 
 /**
  * Works out which icon a key press moves to, so the library can be walked without a mouse.
@@ -33,4 +33,33 @@ export function getVisibleRows(scrollRow: number, count: number) {
   const lastRow = Math.min(totalRows, firstRow + gridVisibleRows + gridOverscan * 2);
 
   return { totalRows, firstRow, lastRow };
+}
+
+/**
+ * Works out where the scrolling area sits to show a given icon in the middle, for opening on the
+ * icon already chosen.
+ *
+ * @param index - Index of the icon to show.
+ * @returns The position to scroll to.
+ */
+export function getCentredScrollTop(index: number) {
+  return Math.max(0, Math.floor(index / gridColumns) * gridRowHeight - gridHeight / 2);
+}
+
+/**
+ * Works out where the scrolling area moves to bring a given icon into view, staying put when the
+ * icon already shows. Taken from the index rather than the icon's own cell, since Home and End can
+ * land outside the rows that are mounted.
+ *
+ * @param index - Index of the icon to reveal.
+ * @param scrollTop - Position the scrolling area has reached.
+ * @returns The position to scroll to.
+ */
+export function getRevealedScrollTop(index: number, scrollTop: number) {
+  const top = Math.floor(index / gridColumns) * gridRowHeight;
+
+  if (top < scrollTop) return top;
+  if (top + gridRowHeight > scrollTop + gridHeight) return top + gridRowHeight - gridHeight;
+
+  return scrollTop;
 }
