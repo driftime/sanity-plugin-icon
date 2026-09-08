@@ -13,7 +13,7 @@
 
 ## Overview
 
-Icon adds a field type to Sanity Studio that opens the whole Lucide library as a searchable grid. Authors find an icon by its name or by what it depicts, and the drawing itself is stored on the document alongside the name it was chosen by.
+Icon adds a field type to Sanity Studio that opens the Lucide library as a searchable grid, either in full or limited to a set you choose. Authors find an icon by its name or by what it depicts, and the drawing itself is stored on the document alongside the name it was chosen by.
 
 Rendering costs one component and **under 2 kB gzipped**, with no icon library in your application. That works because the document holds the drawing rather than a reference to it, so nothing needs resolving by name at runtime.
 
@@ -42,7 +42,7 @@ bun add -E @driftime/sanity-plugin-icon
 
 ## Basic Setup
 
-Add the plugin to your Sanity configuration. It takes no options.
+Add the plugin to your Sanity configuration.
 
 ```typescript
 import { defineConfig } from "sanity";
@@ -67,12 +67,50 @@ defineField({
 
 The type is registered as `icon` and the name is not configurable, so a Studio that already defines its own `icon` type will need to rename that one.
 
+See [Configuration](#configuration) for the options the plugin takes.
+
+<br />
+
+## Restricting the Icon Set
+
+By default the picker offers every icon in the library. Pass `icons` to limit it, and every field takes the set you name.
+
+```typescript
+export default defineConfig({
+  // ...
+  plugins: [iconPlugin({ icons: ["mail", "phone", "globe"] })],
+});
+```
+
+The plugin augments Sanity's `IntrinsicDefinitions` interface, adding an `icons` option that TypeScript recognises automatically. A field can name its own set, which replaces the one the plugin was given rather than narrowing it.
+
+```typescript
+defineField({
+  name: "icon",
+  type: "icon",
+  description: "Shown on the feature card.",
+  options: { icons: ["leaf", "shield", "zap"] },
+});
+```
+
+Names are typed against the Lucide version your project resolved, so they autocomplete as you write them. Icons appear in the order you list them, and a name that version does not recognise is skipped.
+
+Use `SanityIconName` to type a set you want to share between fields.
+
+```typescript
+import type { SanityIconName } from "@driftime/sanity-plugin-icon";
+
+export const clientIcons: SanityIconName[] = ["mail", "phone", "globe"];
+```
+
+Restricting a set does not affect what has already been stored. The document holds the drawing, so an icon saved earlier still renders even though the picker no longer offers it.
+
 <br />
 
 ## Picking an Icon
 
 - Search matches an icon's name and the terms it is tagged with, so "next" finds `arrow-right`.
-- The complete Lucide set is offered, and the count reflects whatever the current release holds.
+- The complete Lucide set is offered unless you restrict it, and the count reflects whatever is available.
 - The last eight icons chosen are remembered, per browser rather than per dataset.
 
 <br />
@@ -171,12 +209,46 @@ bun add -E @driftime/sanity-plugin-icon
 
 ## API
 
+What the package exports at runtime, and which import path each one comes from.
+
 | Export                     | Import from                           | Purpose                                    |
 | -------------------------- | ------------------------------------- | ------------------------------------------ |
-| `iconPlugin()`             | `@driftime/sanity-plugin-icon`        | Registers the `icon` type with the Studio. |
+| `iconPlugin(config?)`      | `@driftime/sanity-plugin-icon`        | Registers the `icon` type with the Studio. |
 | `createIconPreview(value)` | `@driftime/sanity-plugin-icon`        | Builds preview media from a stored icon.   |
 | `Icon`                     | `@driftime/sanity-plugin-icon/render` | Draws a stored icon.                       |
-| `SanityIcon`               | either                                | Type of the stored value.                  |
+
+<br />
+
+## Configuration
+
+Nothing is required. Without `icons`, the picker offers every icon in the library.
+
+| Option  | Type               | Default     | Purpose                                                                                 |
+| ------- | ------------------ | ----------- | --------------------------------------------------------------------------------------- |
+| `icons` | `SanityIconName[]` | `undefined` | Icons an author may choose from, in the order they are listed. Every icon when omitted. |
+
+A field accepts the same option under `options`, where it replaces the set the plugin was given.
+
+<br />
+
+## Exported Types
+
+These types are exported for typing your own configuration and for querying stored icons outside the Studio.
+
+Configuration you supply:
+
+| Type                   | Purpose                                                 |
+| ---------------------- | ------------------------------------------------------- |
+| `SanityIconName`       | The name of an icon in the installed Lucide version.    |
+| `SanityIconOptions`    | The `options` an icon field accepts.                    |
+| `SanityIconDefinition` | The shape of a field or array member of type `icon`.    |
+| `SanityIconConfig`     | The full plugin configuration accepted by `iconPlugin`. |
+
+Content the dataset stores:
+
+| Type         | Purpose                                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------------------------ |
+| `SanityIcon` | A stored icon, holding the name it was chosen by and the shapes it draws. Available from either import path. |
 
 <br />
 
