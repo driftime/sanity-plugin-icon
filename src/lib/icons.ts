@@ -1,0 +1,21 @@
+import type { ComponentProps, ComponentType } from "react";
+import { createElement } from "react";
+
+import { defaultIconProps } from "@/config/defaults";
+
+/**
+ * Creates a Sanity Studio icon component from an SVG icon.
+ *
+ * @param icon - The icon component to wrap.
+ * @param props - Additional props merged over the default properties a Studio icon is drawn with.
+ * @returns A Studio icon component.
+ */
+export function createSanityIcon(icon: ComponentType<ComponentProps<"svg">>, props?: ComponentProps<"svg">) {
+  const Icon = icon;
+
+  function SanityIcon() {
+    return createElement(Icon, { ...defaultIconProps, ...props });
+  }
+
+  return SanityIcon;
+}
